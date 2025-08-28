@@ -1,24 +1,29 @@
 package com.example.demo;
-
 import com.example.demo.Repository.StudentRepository;
+import com.example.demo.entity.Students;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.util.List;
+
 @SpringBootApplication
 public class Demo1Application implements CommandLineRunner {
-
-    @Autowired
-    private StudentRepository studentRepository;
-
+    @Autowired private StudentRepository studentRepository;
     public static void main(String[] args) {
-        SpringApplication.run(Demo1Application.class, args);
-    }
-
+        SpringApplication.run(Demo1Application.class, args); }
     @Override
     public void run(String... args) {
-        System.out.println("Danh sách sinh viên trong DB:");
-        studentRepository.findAll().forEach(System.out::println);
+        List<Students> students = studentRepository.findAll();
+        if (students.isEmpty()) {
+            System.out.println("Không có sinh viên nào trong DB!");
+        } else {
+            students.forEach(s -> {
+                System.out.println("Student: " + s.getName());
+
+            });
+        }
     }
+
 }
