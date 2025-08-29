@@ -125,7 +125,7 @@ function App() {
     }
 
     const studentData = {
-      studentId: editingStudent?.studentId || 0,
+
       name: formData.name,
       age: age,
       gender: formData.gender,

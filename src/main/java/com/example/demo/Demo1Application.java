@@ -15,15 +15,17 @@ public class Demo1Application implements CommandLineRunner {
         SpringApplication.run(Demo1Application.class, args); }
     @Override
     public void run(String... args) {
+
+        // In lại danh sách student
         List<Students> students = studentRepository.findAll();
         if (students.isEmpty()) {
             System.out.println("Không có sinh viên nào trong DB!");
         } else {
             students.forEach(s -> {
-                System.out.println("Student: " + s.getName());
-
+                System.out.println("Student: " + s.getStudentId() + " - " + s.getName());
             });
         }
     }
+
 
 }
