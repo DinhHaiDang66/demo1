@@ -29,7 +29,13 @@ function App() {
     address: '',
     gpa: ''
   });
-  const [formError, setFormError] = useState<string | null>(null); // Lỗi cụ thể cho form
+  const [formError, setFormError] = useState<string | null>(null);
+  // New state for pagination, search, and filter
+  const [currentTablePage, setCurrentTablePage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [gradeFilter, setGradeFilter] = useState('');
+
+  const studentsPerPage = 3;
 
   const loadStudents = () => {
     fetch('http://localhost:8080/api/students')
@@ -41,7 +47,7 @@ function App() {
         })
         .then(data => {
           setStudents(data);
-          setFormError(null); // Xóa lỗi khi tải thành công
+          setFormError(null);
         })
         .catch(error => {
           console.error('Error fetching students:', error);
@@ -65,7 +71,7 @@ function App() {
       address: '',
       gpa: ''
     });
-    setFormError(null); // Xóa lỗi cũ khi mở form
+    setFormError(null);
     setShowStudentForm(true);
   };
 
@@ -81,7 +87,7 @@ function App() {
       address: student.address,
       gpa: student.gpa?.toString() || ''
     });
-    setFormError(null); // Xóa lỗi cũ khi mở form
+    setFormError(null);
     setShowStudentForm(true);
   };
 
@@ -89,7 +95,6 @@ function App() {
     if (window.confirm('Bạn chắc chắn muốn xóa sinh viên này?')) {
       fetch(`http://localhost:8080/api/students/${id}`, {
         method: 'DELETE',
-        // Không thêm headers nếu không cần body
       })
           .then(response => {
             if (!response.ok) {
@@ -101,6 +106,11 @@ function App() {
           })
           .then(() => {
             loadStudents();
+            // Reset to first page if current page becomes empty
+            const totalPages = Math.ceil(filteredStudents().length / studentsPerPage);
+            if (currentTablePage > totalPages) {
+              setCurrentTablePage(1);
+            }
             alert('Xóa thành công!');
           })
           .catch(error => {
@@ -112,7 +122,6 @@ function App() {
 
   const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
-    // Kiểm tra và parse dữ liệu
     const age = formData.age ? parseInt(formData.age) : null;
     if (isNaN(age as number) && formData.age !== '') {
       setFormError('Tuổi phải là số hợp lệ.');
@@ -125,7 +134,6 @@ function App() {
     }
 
     const studentData = {
-
       name: formData.name,
       age: age,
       gender: formData.gender,
@@ -135,7 +143,6 @@ function App() {
       address: formData.address,
       gpa: gpa
     };
-    console.log('Sending data to backend:', JSON.stringify(studentData)); // Log dữ liệu
 
     const url = editingStudent
         ? `http://localhost:8080/api/students/${editingStudent.studentId}`
@@ -180,6 +187,22 @@ function App() {
       gpa: ''
     });
   };
+
+  // Filter and search students
+  const filteredStudents = () => {
+    return students.filter(student =>
+        student.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        (gradeFilter === '' || student.grade === gradeFilter)
+    );
+  };
+
+  // Pagination logic
+  const indexOfLastStudent = currentTablePage * studentsPerPage;
+  const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
+  const currentStudents = filteredStudents().slice(indexOfFirstStudent, indexOfLastStudent);
+  const totalPages = Math.ceil(filteredStudents().length / studentsPerPage);
+
+  const paginate = (pageNumber: number) => setCurrentTablePage(pageNumber);
 
   const renderHomePage = () => (
       <div className="max-w-6xl mx-auto">
@@ -278,7 +301,7 @@ function App() {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full mb-4">
               <Info className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">Về EduManage</h1>
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">Về Edu HospaEduManage</h1>
             <p className="text-xl text-gray-600">Câu chuyện phát triển và sứ mệnh của chúng tôi</p>
           </div>
 
@@ -313,7 +336,7 @@ function App() {
                 <div className="p-4 bg-teal-50 rounded-lg">
                   <h3 className="font-semibold text-teal-800 mb-2">Sứ Mệnh</h3>
                   <p className="text-teal-700 text-sm">
-                    Cung cấp các giải pháp công nghệ tiên tiến, dễ sử dụng và hiệu quả để hỗ trợ
+                    Cung cấp các giải pháp công nghệ tiên tiến, dễ sử dụng và hiệu quả để hỗ edits
                     các nhà giáo dục trong việc quản lý và phát triển học sinh.
                   </p>
                 </div>
@@ -409,11 +432,39 @@ function App() {
             </button>
           </div>
 
+          {/* Search and Filter */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <input
+                type="text"
+                placeholder="Tìm kiếm theo tên..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentTablePage(1); // Reset to first page on search
+                }}
+                className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <select
+                value={gradeFilter}
+                onChange={(e) => {
+                  setGradeFilter(e.target.value);
+                  setCurrentTablePage(1); // Reset to first page on filter change
+                }}
+                className="w-full sm:w-48 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Tất cả lớp</option>
+              {[...new Set(students.map(s => s.grade))].map(grade => (
+                  <option key={grade} value={grade}>{grade}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Student List */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {students.length > 0 ? (
-                students.map((student) => (
+            {currentStudents.length > 0 ? (
+                currentStudents.map((student) => (
                     <div key={student.studentId} className="bg-gray-50 rounded-xl p-6 hover:shadow-lg transition-all duration-200 hover:bg-gray-100">
-                      <div className="flex justify-between items-start mb-4">
+                      <div className="flex justify-between items-center mb-4">
                         <div>
                           <h3 className="text-xl font-semibold text-gray-800">{student.name}</h3>
                           <p className="text-teal-600 font-medium">{student.grade}</p>
@@ -447,16 +498,49 @@ function App() {
                                   student.gpa && student.gpa >= 7.0 ? 'bg-yellow-100 text-yellow-700' :
                                       'bg-red-100 text-red-700'
                           }`}>
-                      {student.gpa?.toFixed(1) || 'N/A'}
-                    </span>
+                            {student.gpa?.toFixed(1) || 'N/A'}
+                          </span>
                         </div>
                       </div>
                     </div>
                 ))
             ) : (
-                <p className="text-center text-gray-500">Không có học sinh nào để hiển thị.</p>
+                <p className="text-center text-gray-500 col-span-full">Không tìm thấy học sinh phù hợp.</p>
             )}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+              <div className="flex justify-center mt-6 space-x-2">
+                <button
+                    onClick={() => paginate(currentTablePage - 1)}
+                    disabled={currentTablePage === 1}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Trước
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                        key={page}
+                        onClick={() => paginate(page)}
+                        className={`px-4 py-2 rounded-lg ${
+                            currentTablePage === page
+                                ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                    >
+                      {page}
+                    </button>
+                ))}
+                <button
+                    onClick={() => paginate(currentTablePage + 1)}
+                    disabled={currentTablePage === totalPages}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Sau
+                </button>
+              </div>
+          )}
         </div>
       </div>
   );
@@ -589,7 +673,7 @@ function App() {
                   <button
                       onClick={() => {
                         setShowStudentForm(false);
-                        setFormError(null); // Xóa lỗi khi đóng form
+                        setFormError(null);
                       }}
                       className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                   >
